@@ -1,0 +1,36 @@
+# SO-100 单臂配置（适配 svla_so101_pickplace 数据集）
+# 数据集只有 2 个摄像头: up 和 side
+
+states:
+  - observation.state.arm.position:
+      origin_keys:
+        - observation.state:
+            start: 0
+            end: 5
+
+  - observation.state.effector.position:
+      origin_keys:
+        - observation.state:
+            start: 5
+            end: 6
+
+actions:
+  - action.arm.position:
+      origin_keys:
+        - action:
+            start: 0
+            end: 5
+      subtract_state: True
+
+  - action.effector.position:
+      origin_keys:
+        - action:
+            start: 5
+            end: 6
+      subtract_state: False
+
+images:
+  - observation.images.camera_top:
+      origin_keys: observation.images.up
+  - observation.images.camera_wrist_left:
+      origin_keys: observation.images.side

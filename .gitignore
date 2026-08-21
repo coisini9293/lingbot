@@ -1,0 +1,43 @@
+# 大体积缓存与训练产物（勿上传）
+.cache/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.autodl/
+.claude/
+
+# 模型与训练输出
+models/pretrained/
+models/checkpoints/
+lingbot-vla/output/
+logs/*.png
+logs/open_loop_eval/
+
+# 预编译 wheel / 本地二进制
+*.whl
+flash_attn-*.whl
+
+# 环境与密钥
+.env
+.env.*
+*.pem
+*.key
+secrets/
+credentials*
+
+# 嵌套上游仓库备份（勿上传）
+**/.git.bak/
+lerobot/.git.bak/
+lingbot-vla/.git.bak/
+
+# 日志
+*.log
+log.txt
+ossutil_output/
+.sumi/
+pids_*.txt
+trash/
+
+# 数据集 HF 下载缓存
+data/**/.cache/
