@@ -26,6 +26,21 @@ Lingbot-VLA/
 | `lingbot-vla/configs/robot_configs/so100.yaml` | 机器人配置（2 摄像头） |
 | `lingbot-vla/assets/norm_stats/so100_svla.json` | 归一化统计量 |
 
+## 新服务器开训（推荐）
+
+换机器 / 用**新数据集**微调时：不要上传旧 checkpoint 和大权重。  
+预训练与 flash-attn 从公开源下载即可，详见 **[docs/new_server_bootstrap.md](docs/new_server_bootstrap.md)**。
+
+```bash
+export HF_ENDPOINT=https://hf-mirror.com
+git clone https://github.com/coisini9293/lingbot.git && cd lingbot
+bash scripts/bootstrap_new_server.sh
+python scripts/verify_env.py
+# 放入新数据集后
+python scripts/compute_norm.py
+python scripts/train.py --gpu 0
+```
+
 ## 完整流程（纯 Python，离线）
 
 ```bash
@@ -34,6 +49,7 @@ conda activate lingbotvla
 
 # 0. 自检 + 准备
 python scripts/verify_env.py          # 环境必须全 OK
+# 新机器优先: bash scripts/bootstrap_new_server.sh
 python scripts/download_models.py     # 首次有网
 python scripts/setup_local_models.py
 python scripts/compute_norm.py
@@ -71,6 +87,8 @@ python scripts/deploy.py \
 | `scripts/install_env.py` | 安装 lingbot-vla 依赖 |
 | `scripts/setup_local_models.py` | 链接 HF 缓存到 models/pretrained/ |
 | `scripts/download_models.py` | 下载模型（有网时运行一次） |
+| `scripts/bootstrap_new_server.sh` | **新机器**：从公开源拉权重 + wheel |
+| `scripts/bootstrap_from_public.py` | 同上（Python 版） |
 | `scripts/compute_norm.py` | 生成归一化统计量 |
 | `scripts/train.py` | 微调训练 |
 | `scripts/deploy.py` | 启动推理服务器 |
@@ -82,6 +100,7 @@ python scripts/deploy.py \
 
 | 文档 | 说明 |
 |------|------|
+| **[docs/new_server_bootstrap.md](docs/new_server_bootstrap.md)** | **新服务器开训（公开源下载，推荐）** |
 | **[docs/full_workflow_summary.md](docs/full_workflow_summary.md)** | **完整流程总结（数据→训练→评估，推荐阅读）** |
 | [docs/environment_setup.md](docs/environment_setup.md) | 环境配置与命令详解 |
 | [docs/environment_setup.md#五附step-与-epoch-的区别](docs/environment_setup.md) | Step 与 Epoch 区别 |
