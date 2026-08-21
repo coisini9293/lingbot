@@ -41,3 +41,6 @@ trash/
 
 # 数据集 HF 下载缓存
 data/**/.cache/
+# pot14 转换后的 LeRobot 大数据集（含视频）
+data/processed/pot14_right_arm/
+logs/crop_preview/

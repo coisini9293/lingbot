@@ -14,6 +14,9 @@ from local_paths import (
     LINGBOT_DIR,
     LINGBOT_VLA_MODEL,
     NORM_STATS_FILE,
+    POT14_DATASET_PATH,
+    POT14_NORM_STATS_FILE,
+    POT14_VLA_CONFIG,
     QWEN_VL_MODEL,
     VLA_CONFIG,
     get_subprocess_env,
@@ -28,14 +31,19 @@ from local_paths import (
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="训练 Lingbot VLA（本地离线）")
-    parser.add_argument("--data-path", default=str(DATASET_PATH))
     parser.add_argument(
-        "--norm-stats-file",
-        default=str(NORM_STATS_FILE.relative_to(LINGBOT_DIR)),
+        "--preset",
+        choices=["so100", "pot14"],
+        default="so100",
+        help="快捷配置：pot14=自采右臂数据",
     )
+    parser.add_argument("--config", default=None, help="VLA yaml 路径，默认随 --preset")
+    parser.add_argument("--data-name", default=None, help="robot_configs/<name>.yaml 的 name")
+    parser.add_argument("--data-path", default=None)
+    parser.add_argument("--norm-stats-file", default=None)
     parser.add_argument("--model-path", default=str(LINGBOT_VLA_MODEL))
     parser.add_argument("--tokenizer-path", default=str(QWEN_VL_MODEL))
-    parser.add_argument("--output-dir", default="output/")
+    parser.add_argument("--output-dir", default=None)
     parser.add_argument("--max-steps", type=int, default=None)
     parser.add_argument("--save-steps", type=int, default=None)
     parser.add_argument("--micro-batch-size", type=int, default=None)
@@ -58,6 +66,23 @@ def main() -> None:
     parser.add_argument("--gpu", default="0")
     args = parser.parse_args()
 
+    if args.preset == "pot14":
+        config = Path(args.config) if args.config else POT14_VLA_CONFIG
+        data_name = args.data_name or "pot14"
+        data_path = args.data_path or str(POT14_DATASET_PATH)
+        norm_stats = args.norm_stats_file or str(
+            POT14_NORM_STATS_FILE.relative_to(LINGBOT_DIR)
+        )
+        output_dir = args.output_dir or "output/pot14/"
+    else:
+        config = Path(args.config) if args.config else VLA_CONFIG
+        data_name = args.data_name or "so100"
+        data_path = args.data_path or str(DATASET_PATH)
+        norm_stats = args.norm_stats_file or str(
+            NORM_STATS_FILE.relative_to(LINGBOT_DIR)
+        )
+        output_dir = args.output_dir or "output/"
+
     env_errors = validate_training_env()
     if env_errors:
         print("=== Conda 环境检查失败 ===")
@@ -72,7 +97,7 @@ def main() -> None:
             print(f"  - {err}")
         sys.exit(1)
 
-    norm_path = LINGBOT_DIR / args.norm_stats_file
+    norm_path = LINGBOT_DIR / norm_stats
     norm_errors = validate_norm_stats_file(norm_path)
     if norm_errors:
         print("=== 归一化统计量检查失败 ===")
@@ -95,11 +120,14 @@ def main() -> None:
         sys.exit(1)
 
     print("=== 开始训练（离线模式） ===")
+    print(f"preset:     {args.preset}")
+    print(f"config:     {config}")
+    print(f"data_name:  {data_name}")
     print(f"VLA 模型:   {args.model_path}")
     print(f"Tokenizer:  {args.tokenizer_path}")
-    print(f"数据路径:   {args.data_path}")
-    print(f"归一化统计: {args.norm_stats_file}")
-    print(f"输出目录:   {args.output_dir}")
+    print(f"数据路径:   {data_path}")
+    print(f"归一化统计: {norm_stats}")
+    print(f"输出目录:   {output_dir}")
     workers_hint = args.num_workers if args.num_workers is not None else recommended_num_workers()
     print(
         f"数据加载建议: num_workers≈{workers_hint}（CPU 并行解码），"
@@ -109,13 +137,13 @@ def main() -> None:
 
     script_args = [
         str(LINGBOT_DIR / "tasks/vla/train_lingbotvla.py"),
-        str(VLA_CONFIG),
-        "--data.train_path", args.data_path,
-        "--data.data_name", "so100",
-        "--data.norm_stats_file", args.norm_stats_file,
+        str(config),
+        "--data.train_path", data_path,
+        "--data.data_name", data_name,
+        "--data.norm_stats_file", norm_stats,
         "--model.model_path", args.model_path,
         "--model.tokenizer_path", args.tokenizer_path,
-        "--train.output_dir", args.output_dir,
+        "--train.output_dir", output_dir,
     ]
     optional_flags: list[tuple[str, object]] = [
         ("--train.max_steps", args.max_steps),
@@ -138,8 +166,8 @@ def main() -> None:
         env=get_subprocess_env(gpu=args.gpu),
     )
 
-    loss_file = LINGBOT_DIR / args.output_dir / "checkpoints" / "loss.jsonl"
-    ckpt_dir = LINGBOT_DIR / args.output_dir / "checkpoints"
+    loss_file = LINGBOT_DIR / output_dir / "checkpoints" / "loss.jsonl"
+    ckpt_dir = LINGBOT_DIR / output_dir / "checkpoints"
     print("=== 训练完成 ===")
     print("产物（均以 global step 为准，不用 epoch 命名）：")
     if loss_file.exists():

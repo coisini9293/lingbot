@@ -18,6 +18,11 @@ QWEN_VL_MODEL = PRETRAINED_DIR / "Qwen2.5-VL-3B-Instruct"
 DATASET_PATH = PROJECT_ROOT / "data/raw/svla_so101_pickplace"
 NORM_STATS_FILE = LINGBOT_DIR / "assets/norm_stats/so100_svla.json"
 
+# pot14 自采数据（转换后）
+POT14_DATASET_PATH = PROJECT_ROOT / "data/processed/pot14_right_arm"
+POT14_NORM_STATS_FILE = LINGBOT_DIR / "assets/norm_stats/pot14_right_arm.json"
+POT14_VLA_CONFIG = LINGBOT_DIR / "configs/vla/pot14.yaml"
+
 VLA_CONFIG = LINGBOT_DIR / "configs/vla/so100.yaml"
 
 # HuggingFace repo → local directory name
