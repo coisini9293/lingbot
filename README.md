@@ -43,7 +43,11 @@ python scripts/train.py --gpu 0
 
 ## 自采 pot14 数据（CSV + 三路拼接视频）
 
-原始数据在 `data/data/`，需先转 LeRobot。说明见 **[docs/pot14_dataset_finetune.md](docs/pot14_dataset_finetune.md)**。
+原始数据在 `data/data/`，需先转 LeRobot。
+
+- 转换说明：[docs/pot14_dataset_finetune.md](docs/pot14_dataset_finetune.md)
+- **完整指南（HF 上传下载 / 训练 / 云端推理 / 本地串口）**：[docs/pot14_full_guide.md](docs/pot14_full_guide.md)
+- 权重仓库：https://huggingface.co/coisini9293/lingbot_pot14
 
 ```bash
 python scripts/convert_pot14_to_lerobot.py --dry-run      # 看左右臂判定
@@ -51,6 +55,10 @@ python scripts/convert_pot14_to_lerobot.py --overwrite   # 转换
 # 开卡后:
 python scripts/compute_norm.py --preset pot14
 python scripts/train.py --preset pot14 --gpu 0
+
+# 上传到 Hugging Face
+huggingface-cli login
+python scripts/upload_pot14_to_hf.py
 ```
 
 ## 完整流程（纯 Python，离线）
@@ -102,6 +110,7 @@ python scripts/deploy.py \
 | `scripts/bootstrap_new_server.sh` | **新机器**：从公开源拉权重 + wheel |
 | `scripts/bootstrap_from_public.py` | 同上（Python 版） |
 | `scripts/convert_pot14_to_lerobot.py` | **自采 CSV+MKV → LeRobot（pot14）** |
+| `scripts/upload_pot14_to_hf.py` | **上传 pot14 hf_ckpt 到 Hugging Face** |
 | `scripts/compute_norm.py` | 生成归一化统计量（支持 `--preset pot14`） |
 | `scripts/train.py` | 微调训练 |
 | `scripts/deploy.py` | 启动推理服务器 |
@@ -113,7 +122,8 @@ python scripts/deploy.py \
 
 | 文档 | 说明 |
 |------|------|
-| **[docs/pot14_dataset_finetune.md](docs/pot14_dataset_finetune.md)** | **自采 pot14 数据转换与微调** |
+| **[docs/pot14_full_guide.md](docs/pot14_full_guide.md)** | **pot14：HF 上传下载 / 训练 / 云端推理 / 串口** |
+| **[docs/pot14_dataset_finetune.md](docs/pot14_dataset_finetune.md)** | 自采 pot14 数据转换与微调 |
 | **[docs/new_server_bootstrap.md](docs/new_server_bootstrap.md)** | **新服务器开训（公开源下载，推荐）** |
 | **[docs/full_workflow_summary.md](docs/full_workflow_summary.md)** | **完整流程总结（数据→训练→评估，推荐阅读）** |
 | [docs/environment_setup.md](docs/environment_setup.md) | 环境配置与命令详解 |

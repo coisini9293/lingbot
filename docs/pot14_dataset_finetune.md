@@ -97,3 +97,10 @@ python scripts/convert_pot14_to_lerobot.py --fps 30
 - 转换产物较大（视频），默认在 `data/processed/`，勿提交 Git。  
 - 左臂在现有数据里几乎不动；若你目视觉得「像左臂」，以 CSV 侧别报告为准，或检查 CAN1/CAN2 命名是否反了。  
 - 未跑训练；开卡后按上面 3→4 步执行即可。
+
+---
+
+## 更多
+
+上传 Hugging Face、云端推理、本地串口见 **[pot14_full_guide.md](pot14_full_guide.md)**。  
+权重仓库：https://huggingface.co/coisini9293/lingbot_pot14

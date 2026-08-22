@@ -9,10 +9,15 @@
 
 # 模型与训练输出
 models/pretrained/
+models/finetuned/
 models/checkpoints/
 lingbot-vla/output/
-logs/*.png
-logs/open_loop_eval/
+logs/
+
+# 原始采集与处理后大数据（CSV/MKV/视频数据集）
+data/data/
+data/processed/
+data/raw/
 
 # 预编译 wheel / 本地二进制
 *.whl
@@ -41,6 +46,3 @@ trash/
 
 # 数据集 HF 下载缓存
 data/**/.cache/
-# pot14 转换后的 LeRobot 大数据集（含视频）
-data/processed/pot14_right_arm/
-logs/crop_preview/
