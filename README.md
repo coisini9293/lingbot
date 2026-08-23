@@ -48,6 +48,7 @@ python scripts/train.py --gpu 0
 - 转换说明：[docs/pot14_dataset_finetune.md](docs/pot14_dataset_finetune.md)
 - **完整指南（HF 上传下载 / 训练 / 云端推理 / 本地串口）**：[docs/pot14_full_guide.md](docs/pot14_full_guide.md)
 - 权重仓库：https://huggingface.co/coisini9293/lingbot_pot14
+- **本地控制台（Mac）**：`python deploy/pot14_console_server.py` → http://127.0.0.1:7860（实时 USB 相机预览 + 动作限速）
 
 ```bash
 python scripts/convert_pot14_to_lerobot.py --dry-run      # 看左右臂判定

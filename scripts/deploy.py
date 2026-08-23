@@ -22,6 +22,17 @@ def main() -> None:
         default=str(QWEN_VL_MODEL),
         help="本地 Qwen 基座路径（用于 tokenizer/processor）",
     )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=6006,
+        help="WebSocket 端口（AutoDL 自定义服务常用 6006）",
+    )
+    parser.add_argument(
+        "--norm-path",
+        default=None,
+        help="归一化统计量 JSON（pot14 建议传 pot14_right_arm.json）",
+    )
     args = parser.parse_args()
 
     env = get_subprocess_env()
@@ -30,13 +41,17 @@ def main() -> None:
     print("=== 部署模型（离线模式） ===")
     print(f"微调模型: {args.model_path}")
     print(f"Qwen 基座: {args.qwen_path}")
+    print(f"端口:      {args.port}")
 
     cmd = [
         sys.executable, "-m", "deploy.lingbot_vla_policy",
         "--model_path", args.model_path,
+        "--port", str(args.port),
         "--use_compile",
         "--use_length", "16",
     ]
+    if args.norm_path:
+        cmd.extend(["--norm_path", args.norm_path])
 
     subprocess.run(cmd, cwd=LINGBOT_DIR, env=env, check=True)
 

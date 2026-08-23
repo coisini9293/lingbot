@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>pot14 Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="grid-bg" aria-hidden="true"></div>
+
+  <div class="page">
+    <header class="hero" data-anim="hero">
+      <p class="eyebrow">Lingbot · local console</p>
+      <h1>pot<span>14</span></h1>
+      <p class="lede">
+        Mac 端控制台：测延迟或接真机。算力在 AutoDL，本地只采图、串口与 WebSocket。
+      </p>
+      <div class="status-pill" id="linkStatus">
+        <span class="dot"></span>
+        <span id="linkStatusText">待命</span>
+      </div>
+    </header>
+
+    <main class="shell">
+      <div class="col-controls">
+        <section class="panel mode-panel" data-anim="panel">
+          <h2>模式</h2>
+          <div class="mode-switch" role="tablist">
+            <button type="button" class="mode-btn is-active" data-mode="test" role="tab" aria-selected="true">
+              <span class="mode-kicker">01</span>
+              <strong>测试模式</strong>
+              <em>模拟串口 / 假图像 · 测推理延迟</em>
+            </button>
+            <button type="button" class="mode-btn" data-mode="serial" role="tab" aria-selected="false">
+              <span class="mode-kicker">02</span>
+              <strong>实机模式</strong>
+              <em>USB 三路相机 + 蓝牙/串口</em>
+            </button>
+          </div>
+        </section>
+
+        <section class="panel" data-anim="panel">
+          <h2>连接</h2>
+          <label class="field">
+            <span>WebSocket（AutoDL 公网）</span>
+            <input id="wsUrl" type="text" placeholder="wss://你的AutoDL公网地址:8443" value="" />
+          </label>
+          <label class="field">
+            <span>任务文本</span>
+            <input id="task" type="text" value="完成任务：杯子" />
+          </label>
+          <div class="row">
+            <label class="field grow">
+              <span>推理步数（问模型多少轮）</span>
+              <input id="steps" type="number" min="1" max="300" value="160" />
+            </label>
+            <label class="field grow">
+              <span>动作频率 Hz</span>
+              <input id="actionFps" type="number" min="0.5" max="60" step="0.5" value="15" />
+            </label>
+          </div>
+          <div class="row">
+            <label class="field grow">
+              <span>每轴最大步进（弧度）</span>
+              <input id="maxJointStep" type="number" min="0" max="1" step="0.01" value="0" />
+            </label>
+            <label class="check">
+              <input id="executeChunk" type="checkbox" />
+              <span>测试模式也整段执行 chunk</span>
+            </label>
+          </div>
+          <p class="hint">
+            点一次「开始」会自动循环：采图+读关节 → 发任务文本给云端 → 收动作并下发。
+            建议完整任务：步数 160 · 15Hz · 步进 0（无限制）。首次推理可能要 20～30 秒，属正常。
+          </p>
+        </section>
+
+        <section class="panel serial-only" id="serialPanel" data-anim="panel" hidden>
+          <h2>实机设备</h2>
+          <label class="field">
+            <span>串口</span>
+            <select id="serialPort"></select>
+          </label>
+          <div class="cam-pick-grid">
+            <label class="field">
+              <span>俯视 top</span>
+              <select id="camTop"></select>
+            </label>
+            <label class="field">
+              <span>左侧 left</span>
+              <select id="camLeft"></select>
+            </label>
+            <label class="field">
+              <span>右侧 right</span>
+              <select id="camRight"></select>
+            </label>
+          </div>
+          <label class="check" style="padding-bottom:0.5rem">
+            <input id="mockState" type="checkbox" />
+            <span>串口暂无状态回传时用零状态联调（只测相机+云端推理）</span>
+          </label>
+          <div class="btn-row">
+            <button type="button" class="ghost" id="btnPorts">刷新串口</button>
+            <button type="button" class="ghost" id="btnCams">刷新并打开预览</button>
+            <button type="button" class="ghost" id="btnStopPreview">关闭预览（释放相机）</button>
+            <button type="button" class="ghost" id="btnPrep">准备实机</button>
+            <button type="button" class="ghost" id="btnJog">硬件点动自检</button>
+          </div>
+          <pre class="device-box" id="deviceBox">流程：选串口与三路相机 → 预览确认视角 →「关闭预览/准备实机」→ 可先「硬件点动自检」→ 再点开始运行</pre>
+
+          <h3 class="cam-live-title">实时预览</h3>
+          <div class="cam-live-grid" id="camLiveGrid">
+            <figure class="cam-tile">
+              <figcaption>top</figcaption>
+              <img id="liveTop" alt="top camera" />
+            </figure>
+            <figure class="cam-tile">
+              <figcaption>left</figcaption>
+              <img id="liveLeft" alt="left camera" />
+            </figure>
+            <figure class="cam-tile">
+              <figcaption>right</figcaption>
+              <img id="liveRight" alt="right camera" />
+            </figure>
+          </div>
+          <p class="hint" id="previewHint">正式跑之前请点「关闭预览」或「准备实机」，避免和推理抢相机。</p>
+        </section>
+
+        <section class="panel actions" data-anim="panel">
+          <button type="button" class="run" id="btnRun">
+            <span class="run-label">开始运行</span>
+            <span class="run-shine" aria-hidden="true"></span>
+          </button>
+          <p class="hint">
+            你只需填「任务文本」；三路视频每一步由程序自动采集上传，不用手动传视频。
+            AutoDL 需保持 <code>deploy.py --port 6006</code>。
+          </p>
+        </section>
+      </div>
+
+      <section class="panel log-panel" data-anim="panel">
+        <div class="log-head">
+          <h2>运行日志</h2>
+          <span id="runBadge" class="badge">idle</span>
+        </div>
+        <pre id="logBox" class="log-box">等待开始…</pre>
+        <h3>延迟汇总</h3>
+        <pre id="summaryBox" class="summary-box">{}</pre>
+      </section>
+    </main>
+
+    <footer class="foot" data-anim="foot">
+      records → <code>logs/pot14_runs/</code>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

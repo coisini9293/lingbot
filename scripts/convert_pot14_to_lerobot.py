@@ -29,7 +29,8 @@ import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_SRC = ROOT / "data" / "data"
+# 原始采集默认在 data/raw/pot14；若仍用旧路径 data/data，请传 --src
+DEFAULT_SRC = ROOT / "data" / "raw" / "pot14"
 DEFAULT_OUT = ROOT / "data" / "processed" / "pot14_right_arm"
 
 # 拼接布局（1280x720）: 上=俯视，下左=左侧，下右=右侧

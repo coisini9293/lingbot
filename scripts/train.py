@@ -112,7 +112,15 @@ def main() -> None:
             print(f"  - {err}")
         sys.exit(1)
 
-    disk_errors = check_disk_free_space()
+    out_check = Path(output_dir)
+    if not out_check.is_absolute():
+        out_check = LINGBOT_DIR / out_check
+    out_check.mkdir(parents=True, exist_ok=True)
+    # 短冒烟（≤10 step）不强制预留完整 checkpoint 空间
+    smoke = args.max_steps is not None and args.max_steps <= 10
+    disk_errors = check_disk_free_space(
+        out_check, min_free_gib=5.0 if smoke else 22.0
+    )
     if disk_errors:
         print("=== 磁盘空间检查失败 ===")
         for err in disk_errors:

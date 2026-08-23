@@ -192,10 +192,27 @@ class WebsocketClientPolicy:
     See WebsocketPolicyServer for a corresponding server implementation.
     """
 
-    def __init__(self, host: str = "0.0.0.0", port: Optional[int] = None, api_key: Optional[str] = None) -> None:
-        self._uri = f"ws://{host}"
-        if port is not None:
-            self._uri += f":{port}"
+    def __init__(
+        self,
+        host: str = "0.0.0.0",
+        port: Optional[int] = None,
+        api_key: Optional[str] = None,
+        *,
+        uri: Optional[str] = None,
+    ) -> None:
+        # 优先用完整 URI（AutoDL 公网常用 wss://host:8443）
+        if uri:
+            self._uri = uri.rstrip("/")
+            if self._uri.startswith("https://"):
+                self._uri = "wss://" + self._uri[len("https://") :]
+            elif self._uri.startswith("http://"):
+                self._uri = "ws://" + self._uri[len("http://") :]
+            elif not (self._uri.startswith("ws://") or self._uri.startswith("wss://")):
+                self._uri = "wss://" + self._uri
+        else:
+            self._uri = f"ws://{host}"
+            if port is not None:
+                self._uri += f":{port}"
         self._packer = Packer()
         self._api_key = api_key
         self._ws, self._server_metadata = self._wait_for_server()
@@ -216,6 +233,9 @@ class WebsocketClientPolicy:
             except ConnectionRefusedError:
                 logging.info("Still waiting for server...")
                 time.sleep(5)
+            except OSError as exc:
+                logging.info("Still waiting for server... (%s)", exc)
+                time.sleep(5)
 
     @override
     def infer(self, obs: Dict) -> Dict:  # noqa: UP006
@@ -232,37 +252,85 @@ class WebsocketClientPolicy:
         self.infer(dict(reset=True, robo_name=robo_name))
 
 
+def list_mac_serial_ports() -> list[str]:
+    """列出本机串口（Mac 蓝牙/USB 常用 /dev/cu.*）。"""
+    import glob
+
+    ports = sorted(set(glob.glob("/dev/cu.*") + glob.glob("/dev/tty.*")))
+    return ports
+
+
 if __name__ == "__main__":
+    import argparse
+    import os
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+    parser = argparse.ArgumentParser(description="本地串口机械臂 + 云端 WebSocket 推理（SO-100 示例）")
+    parser.add_argument(
+        "--list-ports",
+        action="store_true",
+        help="只列出本机串口后退出（Mac 查蓝牙串口用这个）",
+    )
+    parser.add_argument(
+        "--serial-port",
+        default=os.environ.get("ROBOT_SERIAL_PORT", "/dev/ttyACM1"),
+        help="机械臂串口路径，Mac 蓝牙多为 /dev/cu.XXXX",
+    )
+    parser.add_argument(
+        "--ws-url",
+        default=os.environ.get(
+            "VLA_WS_URL",
+            "wss://u1087324-85uh-a5fac6ab.weste.seetacloud.com:8443",
+        ),
+        help="AutoDL 公网 WebSocket 地址（可用 https://...，会自动改成 wss://）",
+    )
+    parser.add_argument("--task", default=TASK, help="任务文本")
+    parser.add_argument("--steps", type=int, default=300)
+    args = parser.parse_args()
+
+    if args.list_ports:
+        ports = list_mac_serial_ports()
+        print("本机串口设备：")
+        if not ports:
+            print("  （未找到 /dev/cu.* 或 /dev/tty.*）")
+        for p in ports:
+            print(f"  {p}")
+        print("\nMac 提示：优先选 /dev/cu.开头；蓝牙 SPP 常见名含 Bluetooth / SPP / 设备名。")
+        raise SystemExit(0)
+
     # Create robot configuration
     robot_config = SO100FollowerConfig(
         id="arm_follower",
         cameras={
             "camera_top": OpenCVCameraConfig(index_or_path=0, width=640, height=480, fps=FPS),
             "camera_wrist_left": OpenCVCameraConfig(index_or_path=2, width=640, height=480, fps=FPS),
-            "camera_wrist_right": OpenCVCameraConfig(index_or_path=4, width=640, height=480, fps=FPS)
+            "camera_wrist_right": OpenCVCameraConfig(index_or_path=4, width=640, height=480, fps=FPS),
         },
-        port="/dev/ttyACM1",
+        port=args.serial_port,
     )
 
     robot = SO100Follower(robot_config)
 
     robot.connect()
 
-    policy_on_device = WebsocketClientPolicy(host='47.98.122.182', port=8006)
+    print(f"串口: {args.serial_port}")
+    print(f"WebSocket: {args.ws_url}")
+    policy_on_device = WebsocketClientPolicy(uri=args.ws_url)
 
     # policy_on_device.reset("so100")
 
     try:
-        for step in range(300):
+        for step in range(args.steps):
             raw_obs = robot.get_observation()
 
-            obs = so100_to_lingbot(raw_obs, task=TASK)
+            obs = so100_to_lingbot(raw_obs, task=args.task)
 
             action_chunk = policy_on_device.infer(obs)
 
             print(f"action_chunk server_timing = {action_chunk['server_timing']}")
 
-            for action in action_chunk['action']:
+            for action in action_chunk["action"]:
                 send_vla_action(robot, action)
                 time.sleep(1.0 / FPS)  # 30Hz 执行，但每 16 步才更新一次观测
 

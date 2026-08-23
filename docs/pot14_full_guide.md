@@ -1,4 +1,4 @@
-# pot14 完整指南：权重托管、训练、云端推理、本地串口
+ # pot14 完整指南：权重托管、训练、云端推理、本地串口
 
 仓库权重：[coisini9293/lingbot_pot14](https://huggingface.co/coisini9293/lingbot_pot14)
 
@@ -220,31 +220,33 @@ AutoDL
 3. 收到 `action` chunk（一次多步，deploy 默认 `use_length=16`）
 4. 本地按串口协议逐帧写出
 
-仓库里 `deploy/test.py` 是 **SO-100（6 维）** 示例，**不能直接用于 pot14（7 维）**。  
-pot14 需要你按自己的 CAN/串口协议写客户端，逻辑可参考：
+**推荐客户端（pot14 专用）：** [`deploy/pot14_local_client.py`](../deploy/pot14_local_client.py)
 
-```python
-# 伪代码
-from lingbot-vla.deploy.websocket_client_policy 的用法概念：
+- 观测键：`observation.images.top/left/right` + `observation.state`（7 维）+ `task`
+- 支持 AutoDL 公网 `https://...:8443`（自动转 `wss://`）
+- `--mode mock-latency`：模拟串口，测推理延迟并写 `logs/pot14_runs/*.jsonl`
+- `--mode serial`：真实串口（写 ESP32 RAW：`P`+14×ADC+`*`+CRC16；读 key=value 状态行）
 
-client = WebsocketClientPolicy(host="<AutoDL公网>", port=<映射端口>)
-client.reset("pot14")   # 首次对齐 robot config / norm
+```bash
+# Mac：查蓝牙串口
+python deploy/pot14_local_client.py --list-ports
 
-while True:
-    images = read_cameras()          # top / left / right，与训练一致
-    state = read_serial_joints_7d()  # 与训练同一套 relative_rad
-    obs = {
-        "observation.images.top": images["top"],
-        "observation.images.left": images["left"],
-        "observation.images.right": images["right"],
-        "observation.state": state,   # shape (7,)
-        "task": "完成任务：杯子",
-        # 首次可带 reset / robo_name
-    }
-    action_chunk = client.infer(obs)
-    for step_action in action_chunk[...]:  # 取 7 维动作
-        write_serial(step_action)
+# 1) AutoDL 上先启动服务（内部仍监听 6006）
+# python scripts/deploy.py --model-path ... --port 6006 --norm-path ...
+
+# 2) Mac 上测延迟（不接真机）
+python deploy/pot14_local_client.py --mode mock-latency \
+  --ws-url https://<你的AutoDL公网域名>:8443 \
+  --steps 20
+
+# 3) Mac 上接真机
+python deploy/pot14_local_client.py --mode serial \
+  --serial-port /dev/cu.XXXX \
+  --ws-url https://<你的AutoDL公网域名>:8443 \
+  --task "完成任务：杯子"
 ```
+
+仓库里旧的 `deploy/test.py` 是 **SO-100（6 维）** 示例，**不要用于 pot14**。
 
 ### 5.3 关键对齐点（否则控臂会偏）
 
@@ -306,3 +308,35 @@ python scripts/deploy.py \
 ---
 
 *仓库: [coisini9293/lingbot_pot14](https://huggingface.co/coisini9293/lingbot_pot14)*
+
+## 八、本地前端控制台（可选）
+
+推荐使用带 GSAP 动画的控制台（`frontend-design` + `gsap-core`）：
+
+```bash
+# Mac
+pip install fastapi uvicorn numpy msgpack websockets opencv-python pyserial pyobjc-framework-AVFoundation
+cd lingbot-main
+python deploy/pot14_console_server.py
+# 浏览器打开 http://127.0.0.1:7860
+```
+
+功能要点：
+- **相机**：用 AVFoundation 列出三路 USB（排除 FaceTime）；网页下拉自行指定 top / left / right
+- **串口**：下拉选择（优先 `cu.usbserial*`）
+- **动作限速**：默认 **15 Hz**；「每轴最大步进」默认 **0（无限制）**，需要时可再调小
+- 列设备：`python deploy/list_avf_cameras.py`
+
+AutoDL 需先 `deploy.py --port 6006` 并保持运行。
+若客户端报 `keepalive ping timeout`：同步最新代码后**重启** AutoDL 上的 deploy。
+ cd /root/autodl-tmp/lingbot
+
+
+ conda activate lingbotvla
+cd /root/autodl-tmp/lingbot
+
+python scripts/deploy.py \
+  --model-path /root/autodl-tmp/lingbot/models/finetuned/lingbot_pot14 \
+  --qwen-path /root/autodl-tmp/lingbot/models/pretrained/Qwen2.5-VL-3B-Instruct \
+  --norm-path /root/autodl-tmp/lingbot/lingbot-vla/assets/norm_stats/pot14_right_arm.json \
+  --port 6006
